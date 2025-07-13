@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PayPal Checkout</title>
+    <script src="https://www.paypal.com/sdk/js?client-id=AXs_m4q-6Wlh0_Laqlm5cxzhxx1jMA2pLXFapdV49jLuKYg_b2bBrfFzE82o5gD2csKwbReZmPEWIWvk&currency=EUR"></script>
+  </head>
+  <body>
+    <div id="paypal-button-container"></div>
+    <script>
+      window.addEventListener("message", (event) => {
+        const { amount, bookingNumber } = event.data || {};
+        if (!amount) return;
+
+        paypal.Buttons({
+          createOrder: function(data, actions) {
+            return actions.order.create({
+              purchase_units: [{
+                amount: { value: amount }
+              }]
+            });
+          },
+          onApprove: function(data, actions) {
+            return actions.order.capture().then(function(details) {
+              parent.postMessage({ status: "success", bookingNumber }, "*");
+            });
+          },
+          onError: function(err) {
+            parent.postMessage({ status: "error", message: err.message }, "*");
+          }
+        }).render('#paypal-button-container');
+      });
+    </script>
+  </body>
+</html>
