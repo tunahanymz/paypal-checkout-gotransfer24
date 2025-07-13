@@ -11,11 +11,14 @@
       let bookingData = null;
       let buttonsRendered = false;
 
+      // Sicherer Button-Render
       function renderButtons() {
         if (!bookingData || buttonsRendered) return;
         buttonsRendered = true;
 
         const { amount, bookingNumber } = bookingData;
+
+        console.log("🚀 Rendering PayPal mit", amount, bookingNumber);
 
         paypal.Buttons({
           createOrder: function (data, actions) {
@@ -27,30 +30,36 @@
           },
           onApprove: function (data, actions) {
             return actions.order.capture().then(function (details) {
+              console.log("✅ Zahlung erfolgreich");
               window.parent.postMessage({ status: "success", bookingNumber }, "*");
             });
           },
           onError: function (err) {
+            console.error("❌ PayPal Fehler:", err.message);
             window.parent.postMessage({ status: "error", message: err.message }, "*");
           }
         }).render('#paypal-button-container');
       }
 
+      // Empfange Daten vom Elternfenster
       window.addEventListener("message", (event) => {
-        if (!event.data?.amount) return;
+        if (!event.data?.amount || !event.data?.bookingNumber) return;
 
         bookingData = {
           amount: event.data.amount,
           bookingNumber: event.data.bookingNumber
         };
 
+        console.log("📨 Empfangen:", bookingData);
+
         renderButtons();
       });
 
-      // Falls die Nachricht bereits vor addEventListener ankam (selten), 1 Sekunde später erneut versuchen
+      // Sicherheitshalber fallback – versuche erneut zu rendern
       setTimeout(() => {
-        if (!buttonsRendered) renderButtons();
-      }, 1000);
+        console.log("⏱️ Timeout fallback ausgeführt");
+        renderButtons();
+      }, 1500);
     </script>
   </body>
 </html>
