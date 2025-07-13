@@ -6,29 +6,51 @@
   </head>
   <body>
     <div id="paypal-button-container"></div>
+
     <script>
-      window.addEventListener("message", (event) => {
-        const { amount, bookingNumber } = event.data || {};
-        if (!amount) return;
+      let bookingData = null;
+      let buttonsRendered = false;
+
+      function renderButtons() {
+        if (!bookingData || buttonsRendered) return;
+        buttonsRendered = true;
+
+        const { amount, bookingNumber } = bookingData;
 
         paypal.Buttons({
-          createOrder: function(data, actions) {
+          createOrder: function (data, actions) {
             return actions.order.create({
               purchase_units: [{
                 amount: { value: amount }
               }]
             });
           },
-          onApprove: function(data, actions) {
-            return actions.order.capture().then(function(details) {
-              parent.postMessage({ status: "success", bookingNumber }, "*");
+          onApprove: function (data, actions) {
+            return actions.order.capture().then(function (details) {
+              window.parent.postMessage({ status: "success", bookingNumber }, "*");
             });
           },
-          onError: function(err) {
-            parent.postMessage({ status: "error", message: err.message }, "*");
+          onError: function (err) {
+            window.parent.postMessage({ status: "error", message: err.message }, "*");
           }
         }).render('#paypal-button-container');
+      }
+
+      window.addEventListener("message", (event) => {
+        if (!event.data?.amount) return;
+
+        bookingData = {
+          amount: event.data.amount,
+          bookingNumber: event.data.bookingNumber
+        };
+
+        renderButtons();
       });
+
+      // Falls die Nachricht bereits vor addEventListener ankam (selten), 1 Sekunde später erneut versuchen
+      setTimeout(() => {
+        if (!buttonsRendered) renderButtons();
+      }, 1000);
     </script>
   </body>
 </html>
